@@ -1,5 +1,6 @@
 # 网易云音乐使用的是包含了js的elements,因此使用selenium
 # 注意 这里面使用的是iframe
+import requests
 from selenium import webdriver
 import time
 
@@ -17,7 +18,7 @@ class Music(object):
         driver = webdriver.Chrome()
         driver.get(self.search_url)
         driver.switch_to.frame("g_iframe")
-        print("获取iframe成功")
+
         # 获取所有的风格
         style_dd_ele_list = driver.find_elements_by_xpath("//div[@id='cateListBox']//dd//a")
 
@@ -30,9 +31,8 @@ class Music(object):
         driver.quit()
 
         # 2.进入歌单类型页面，获取歌曲分类以及对应的链接
-        for style in self.style_list:
+        for style in self.style_list[:5]:
 
-            print(style["name"])
             driver = webdriver.Chrome()
             driver.get(style["url"])
             driver.switch_to.frame("contentFrame")
@@ -49,20 +49,33 @@ class Music(object):
 
 
         # 3.获取歌曲链接
-        for item in self.style_list:
+        for item in self.style_list[:5]:
             for style_menu in item["list"]:
                 print(style_menu["url"])
                 driver = webdriver.Chrome()
                 driver.get(style_menu["url"])
-                driver.switch_to.frame("g_iframe")
-                tr_list_ele = driver.find_elements_by_xpath("//table[@class='m-table']//tr")
-                print(len(tr_list_ele))
+                driver.switch_to.frame("contentFrame")
+                tr_list_ele = driver.find_elements_by_xpath("//table[@class='m-table ']/tbody/tr")
+                # tr_list_ele = driver.find_elements_by_class_name("even ")
+                for tr_ele in tr_list_ele:
+                    item={}
+                    item["url"]= "http://music.163.com/song/media/outer/url?"+(tr_ele.find_element_by_xpath(".//span[@class='txt']/a").get_attribute("href")).split("?")[-1]+".mp3"
+                    item["song_name"] = tr_ele.find_element_by_xpath(".//span[@class='txt']/a/b").get_attribute("title")
+
+                    try:
+                        with open(item["song_name"]+".mp3", "wb") as file:
+                            file.write(requests.get(url=item["url"]).content)
+                        print(item["song_name"]+".MP3下载成功")
+                    except:
+                        print(item["song_name"] + ".MP3下载失败")
+
+                    style_menu["list"].append(item)
                 driver.quit()
 
 
-        #
-        # with open("./网易云音乐.txt","a+",encoding="utf-8") as file:
-        #     file.write(str(self.style_list))
+
+        with open("./网易云音乐.txt","a+",encoding="utf-8") as file:
+            file.write(str(self.style_list))
 
 
 def main():
